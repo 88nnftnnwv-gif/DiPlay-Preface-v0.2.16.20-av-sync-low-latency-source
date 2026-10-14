@@ -1,0 +1,41 @@
+name: Build DiPlay APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'DiPlay-Preface-0.2.16.20.zip'
+      - '.github/workflows/build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      - name: Extract source
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          unzip -q DiPlay-Preface-0.2.16.20.zip -d source
+          WRAPPER=$(find source -type f -name gradlew -print -quit)
+          if [ -z "$WRAPPER" ]; then
+            echo "未找到 gradlew，无法自动编译"
+            exit 1
+          fi
+          cd "$(dirname "$WRAPPER")"
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DiPlay-debug-APK
+          path: source/**/build/outputs/apk/**/*.apk
+          if-no-files-found: error
